@@ -1,6 +1,13 @@
 package com.ocr.anthony;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.InputMismatchException;
 import java.util.Scanner;
+
+import static java.nio.file.StandardOpenOption.APPEND;
 
 public class Order {
     Scanner sc = new Scanner(System.in);
@@ -8,13 +15,13 @@ public class Order {
     /**
      * Display all available menus in the restaurant.
      */
-    public void displayAvailableMenu() {
+   /* public void displayAvailableMenu() {
         System.out.println("Choix menu");
         System.out.println("1 - poulet");
         System.out.println("2 - boeuf");
         System.out.println("3 - végétarien");
         System.out.println("Que souhaitez-vous comme menu ?");
-    }
+    }*/
     /**
      * Display a selected menu.
      * @param nbMenu The selected menu.
@@ -38,37 +45,59 @@ public class Order {
     /**
      * Run asking process for a menu.
      */
-    public void runMenu() {
+    public String runMenu() {
         int nbMenu = askMenu();
+        int nbSide = -1;
+        int nbDrink = -1;
         switch (nbMenu) {
             case 1:
-                askSide(true);
-                askDrink();
+                nbSide = askSide(true);
+                nbDrink = askDrink();
                 break;
             case 2:
-                askSide(true);
+                nbSide = askSide(true);
                 break;
             case 3:
-                askSide(false);
-                askDrink();
+                nbSide = askSide(false);
+                nbDrink = askDrink();
                 break;
         }
+        return nbMenu + "," + nbSide + "," + nbDrink + "%n";
     }
 
     /**
      * Run asking process for several menus.
      */
     public void runMenus() {
+        Path orderPath = Paths.get("order.csv");
         System.out.println("Combien souhaitez vous commander de menu ?");
-        int menuQuantity = sc.nextInt();
+        int menuQuantity = -1;
+        boolean responseIsGood;
+        do {
+            try {
+                menuQuantity = sc.nextInt();
+                responseIsGood = true;
+            } catch (InputMismatchException e) {
+                sc.next();
+                System.out.println("Vous devez saisir un nombre, correspondant au nombre de menus souhaités");
+                responseIsGood = false;
+            }
+        } while (!responseIsGood);
         orderSummary = "Résumé de votre commande :%n";
         for (int i = 0; i < menuQuantity; i++) {
             orderSummary += "Menu " + (i + 1) + ":%n";
-            runMenu();
+            String orderLine = runMenu();
+            try {
+                Files.write(orderPath, String.format(orderLine).getBytes(), APPEND);
+            } catch (IOException e) {
+                System.out.println("Ooops une erreur est survenue. Merci de réessayer plus tard");
+                return;
+            }
         }
         System.out.println("");
         System.out.println(String.format(orderSummary));
     }
+
     /**
      * Display a selected side depending on all sides enable or not.
      * All sides = vegetables, frites and rice
@@ -167,11 +196,16 @@ public class Order {
         for (int i = 1; i <= responses.length; i++)
             System.out.println(i + " - " + responses[i - 1]);
         System.out.println("Que souhaitez-vous comme " + category + "?");
-        int nbResponse;
+        int nbResponse = 0;
         boolean responseIsGood;
         do {
-            nbResponse = sc.nextInt();
-            responseIsGood = (nbResponse >= 1 && nbResponse <= responses.length);
+            try {
+                nbResponse = sc.nextInt();
+                responseIsGood = (nbResponse >= 1 && nbResponse <= responses.length);
+            } catch (InputMismatchException e) {
+                sc.next();
+                responseIsGood = false;
+            }
             if (responseIsGood) {
                 String choice = "Vous avez choisi comme " + category + " : " + responses[nbResponse - 1];
                 orderSummary += choice + "%n";
@@ -199,22 +233,23 @@ public class Order {
     /**
      * Display a question about side in the standard input, get response and display it
      */
-    public void askSide(boolean allSidesEnable) {
+    public int askSide(boolean allSidesEnable) {
         if (allSidesEnable) {
             String[] responsesAllSide = {"légumes frais", "frites", "riz"};
-            askSomething("accompagnement", responsesAllSide);
+            return askSomething("accompagnement", responsesAllSide);
         } else {
             String[] responsesOnlyRice = {"riz", "pas de riz"};
-            askSomething("accompagnement", responsesOnlyRice);
+            return askSomething("accompagnement", responsesOnlyRice);
         }
     }
+
 
     /**
      * Display a question about drink in the standard input, get response and display it
      */
-    public void askDrink() {
+    public int askDrink() {
         String[] responsesDrink = {"eau plate", "eau gazeuse", "soda"};
-        askSomething("boisson", responsesDrink);
+        return askSomething("boisson", responsesDrink);
     }
 
 }
